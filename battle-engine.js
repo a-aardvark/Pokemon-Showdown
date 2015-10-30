@@ -1316,6 +1316,18 @@ BattlePokemon = (function () {
 
 		return true;
 	};
+	BattlePokemon.prototype.royType = function (newType) {
+		// removes any types added previously and adds another one
+		this.typesData = this.typesData.filter(function (typeData) {
+			return !typeData.isAdded;
+			}).concat([{
+				type: newType,
+				suppressed: false,
+				isAdded: false
+		}]);
+			
+		return true;
+	};
 	BattlePokemon.prototype.getTypes = function (getAll) {
 		var types = [];
 		for (var i = 0, l = this.typesData.length; i < l; i++) {
@@ -3250,7 +3262,7 @@ Battle = (function () {
 		}
 
 		if (effect.drain && source) {
-			this.heal(Math.ceil(damage * effect.drain[0] / effect.drain[1]), source, target, 'drain');
+			this.heal(Math.ceil(damage * effect.drain), source, target, 'drain');
 		}
 
 		if (!effect.flags) effect.flags = {};
@@ -3462,6 +3474,7 @@ Battle = (function () {
 
 		var atkBoosts = move.useTargetOffensive ? defender.boosts[attackStat] : attacker.boosts[attackStat];
 		var defBoosts = move.useSourceDefensive ? attacker.boosts[defenseStat] : defender.boosts[defenseStat];
+		var datkBoosts = move.useTargetOffensive ? defender.boosts[defenseStat] : attacker.boosts[defenseStat];
 
 		var ignoreNegativeOffensive = !!move.ignoreNegativeOffensive;
 		var ignorePositiveDefensive = !!move.ignorePositiveDefensive;
@@ -3470,12 +3483,13 @@ Battle = (function () {
 			ignoreNegativeOffensive = true;
 			ignorePositiveDefensive = true;
 		}
-		var ignoreOffensive = !!(move.ignoreOffensive || (ignoreNegativeOffensive && atkBoosts < 0));
+		var ignoreOffensive = !!(move.ignoreOffensive || (ignoreNegativeOffensive && atkBoosts < 0 || ignoreNegativeOffensive && datkBoosts < 0));
 		var ignoreDefensive = !!(move.ignoreDefensive || (ignorePositiveDefensive && defBoosts > 0));
 
 		if (ignoreOffensive) {
 			this.debug('Negating (sp)atk boost/penalty.');
 			atkBoosts = 0;
+			datkBoosts = 0;
 		}
 		if (ignoreDefensive) {
 			this.debug('Negating (sp)def boost/penalty.');
@@ -3484,6 +3498,8 @@ Battle = (function () {
 
 		if (move.useTargetOffensive) {
 			attack = defender.calculateStat(attackStat, atkBoosts);
+		} else if (move.id === 'shieldbash') {
+			attack = attacker.calculateStat(defenseStat, datkBoosts);
 		} else {
 			attack = attacker.calculateStat(attackStat, atkBoosts);
 		}
